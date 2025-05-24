@@ -7,10 +7,6 @@
 #include "token.h"
 #include "logging.h"
 
-/*
- * TODO: implement a string and a stringview.
- */
-
 /* ---- HELPER FUNCTIONS ---- */
 
 static inline bool isWhitespace(char c) {
@@ -55,21 +51,31 @@ static char readChar(Tokenizer *t) {
     return c;
 }
 
-static void addToken(Tokenizer *t, TokenType type, void *literal, int str_len) {
-    char *lexeme = malloc(t->current - t->start + 1);
-    lexeme[t->current - t->start] = '\0';
-    strncpy(lexeme, &(t->source[t->start]), t->current - t->start);
+static void addToken(Tokenizer *t, TokenType type) {
+    Token token = {
+        .type = type,
+        .line = t->line
+    };
 
-    if (type == TOKEN_STRING)
-        ((char*)literal)[str_len] = '\0';
+    token.lexeme.p = &t->source[t->start];
+    token.lexeme.str_len = t->current - t->start;
 
-    t->tokens[t->n_tokens] = TokenInit(type, lexeme, literal, t->line);
+    switch (type) {
+    case TOKEN_STRING:
+        token.literal.str.p = &t->source[t->start + 1];
+        token.literal.str.str_len = t->current - t->start - 2;
+        break;
 
-    if (type == TOKEN_STRING)
-        ((char*)literal)[str_len] = '"';
+    case TOKEN_NUMBER:
+        token.literal.f = atof(&t->source[t->start]);
+        break;
 
-    t->n_tokens++;
-    free(lexeme);
+    default:
+        break;
+    }
+
+    t->tokens.array[t->tokens.len] = token;
+    t->tokens.len++;
 }
 
 static void string(Tokenizer *t) {
@@ -86,7 +92,7 @@ static void string(Tokenizer *t) {
 
     readChar(t);
 
-    addToken(t, TOKEN_STRING, &t->source[t->start+1], t->current - t->start - 2);
+    addToken(t, TOKEN_STRING);
 }
 
 static void number(Tokenizer *t) {
@@ -99,15 +105,14 @@ static void number(Tokenizer *t) {
             readChar(t);
     }
 
-    double f = atof(&t->source[t->start]);
-    addToken(t, TOKEN_NUMBER, &f, 0);
+    addToken(t, TOKEN_NUMBER);
 }
 
 static void identifier(Tokenizer *t) {
     while (isAlphaNum(peek(t)))
         readChar(t);
 
-    addToken(t, TOKEN_IDENTIFIER, NULL, 0);
+    addToken(t, TOKEN_IDENTIFIER);
 }
 
 static bool match(Tokenizer *t, char expected) {
@@ -156,19 +161,16 @@ Tokenizer TokenizerInit(const char *source, size_t len) {
         .start = 0,
         .current = 0,
         .line = 1,
-        .n_tokens = 0
+        .tokens.len = 0
     };
 
     for (int i = 0; i < MAX_TOKENS; i++)
-        memset(&t.tokens[i], 0x00, sizeof(Token));
+        memset(&t.tokens.array[i], 0x00, sizeof(Token));
 
     return t;
 }
 
 void TokenizerFini(Tokenizer *t) {
-    for (size_t i = 0; i < t->n_tokens; i++)
-        TokenFini(&t->tokens[i]);
-
     free(t->source);
 }
 
@@ -176,31 +178,31 @@ void TokenizerGetToken(Tokenizer *t) {
     char c = readChar(t);
 
     switch (c) {
-    case '(': addToken(t, TOKEN_LEFT_PAREN, NULL, 0); break;
-    case ')': addToken(t, TOKEN_RIGHT_PAREN, NULL, 0); break;
-    case '{': addToken(t, TOKEN_LEFT_BRACE, NULL, 0); break;
-    case '}': addToken(t, TOKEN_RIGHT_BRACE, NULL, 0); break;
-    case ',': addToken(t, TOKEN_COMMA, NULL, 0); break;
-    case '.': addToken(t, TOKEN_DOT, NULL, 0); break;
-    case '-': addToken(t, TOKEN_MINUS, NULL, 0); break;
-    case '+': addToken(t, TOKEN_PLUS, NULL, 0); break;
-    case ';': addToken(t, TOKEN_SEMICOLON, NULL, 0); break;
-    case '*': addToken(t, TOKEN_STAR, NULL, 0); break;
+    case '(': addToken(t, TOKEN_LEFT_PAREN); break;
+    case ')': addToken(t, TOKEN_RIGHT_PAREN); break;
+    case '{': addToken(t, TOKEN_LEFT_BRACE); break;
+    case '}': addToken(t, TOKEN_RIGHT_BRACE); break;
+    case ',': addToken(t, TOKEN_COMMA); break;
+    case '.': addToken(t, TOKEN_DOT); break;
+    case '-': addToken(t, TOKEN_MINUS); break;
+    case '+': addToken(t, TOKEN_PLUS); break;
+    case ';': addToken(t, TOKEN_SEMICOLON); break;
+    case '*': addToken(t, TOKEN_STAR); break;
     case '"': string(t); break;
     case '=':
-        addToken(t, match(t, '=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL, NULL, 0);
+        addToken(t, match(t, '=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
         break;
 
     case '!':
-        addToken(t, match(t, '=') ? TOKEN_BANG_EQUAL : TOKEN_BANG, NULL, 0);
+        addToken(t, match(t, '=') ? TOKEN_BANG_EQUAL : TOKEN_BANG);
         break;
 
     case '<':
-        addToken(t, match(t, '=') ? TOKEN_LESS_EQUAL : TOKEN_LESS, NULL, 0);
+        addToken(t, match(t, '=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
         break;
 
     case '>':
-        addToken(t, match(t, '=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER, NULL, 0);
+        addToken(t, match(t, '=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
         break;
 
     case '/':
@@ -209,7 +211,7 @@ void TokenizerGetToken(Tokenizer *t) {
         } else if (match(t, '*')) {
             skipMultiline(t);
         } else {
-            addToken(t, TOKEN_SLASH, NULL, 0);
+            addToken(t, TOKEN_SLASH);
             break;
         }
 
@@ -246,15 +248,14 @@ void TokenizerGetToken(Tokenizer *t) {
     }
 }
 
-const Token *TokenizerGetAllTokens(Tokenizer *t, size_t *n_len) {
+const TokenArray *TokenizerGetAllTokens(Tokenizer *t) {
     while (!isAtEnd(t)) {
         t->start = t->current;
         TokenizerGetToken(t);
     }
 
-    t->tokens[t->n_tokens] = TokenInit(TOKEN_EOF, NULL, NULL, t->line);
-    t->n_tokens++;
-    *n_len = t->n_tokens;
+    addToken(t, TOKEN_EOF);
 
-    return t->tokens;
+    return &t->tokens;
 }
+

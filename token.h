@@ -24,20 +24,19 @@ typedef enum {
 } TokenType;
 
 typedef struct {
+    const char *p;
+    size_t str_len;
+} StrView;
+
+typedef struct {
     TokenType type;
-    char *lexeme;
+    StrView lexeme;
     union {
-        struct {
-            char *p;
-            size_t str_len;
-        } str;
+        StrView str;
         double f;
     } literal;
     int line;
 } Token;
-
-Token TokenInit(TokenType type, char *lexeme, void *literal, int line);
-void TokenFini(Token *t);
 
 void TokenPrint(const Token *t);
 

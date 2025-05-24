@@ -8,20 +8,24 @@
 #define MAX_TOKENS 1024
 
 typedef struct {
+    Token array[MAX_TOKENS];
+    int len;
+} TokenArray;
+
+typedef struct {
     char *source;
     size_t source_len;
     size_t start;
     size_t current;
     size_t line;
 
-    Token tokens[MAX_TOKENS];
-    size_t n_tokens;
+    TokenArray tokens;
 } Tokenizer;
 
 Tokenizer TokenizerInit(const char *source, size_t len);
 void TokenizerFini(Tokenizer *t);
 
-const Token *TokenizerGetAllTokens(Tokenizer *t, size_t *len);
+const TokenArray *TokenizerGetAllTokens(Tokenizer *t);
 void TokenizerGetToken(Tokenizer *t);
 
 #endif

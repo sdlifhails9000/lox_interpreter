@@ -11,11 +11,10 @@
 
 static void run(const char *source, size_t size) {
     Tokenizer lexer = TokenizerInit(source, size);
-    size_t tokenListLen = 0;
-    const Token *tokens = TokenizerGetAllTokens(&lexer, &tokenListLen);
+    const TokenArray *tokens = TokenizerGetAllTokens(&lexer);
 
-    for (size_t i = 0; i < tokenListLen; i++)
-        TokenPrint(&tokens[i]);
+    for (size_t i = 0; i < tokens->len; i++)
+        TokenPrint(&tokens->array[i]);
 
     putchar('\n');
 
@@ -50,7 +49,7 @@ static int runFile(const char *path) {
     return 0;
 }
 
-static void runPrompt() {
+static void runPrompt(void) {
     char *line = NULL;
     size_t n_maxread = MAX_LINE_SIZE;
 
