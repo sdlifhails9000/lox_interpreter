@@ -4,12 +4,13 @@
 #include <stddef.h>
 
 #include "token.h"
+#include "map.h"
 
 #define MAX_TOKENS 1024
 
 typedef struct {
     Token array[MAX_TOKENS];
-    int len;
+    size_t len;
 } TokenArray;
 
 typedef struct {
@@ -20,6 +21,7 @@ typedef struct {
     size_t line;
 
     TokenArray tokens;
+    Map reserved;
 } Tokenizer;
 
 Tokenizer TokenizerInit(const char *source, size_t len);

@@ -109,10 +109,21 @@ static void number(Tokenizer *t) {
 }
 
 static void identifier(Tokenizer *t) {
+    char *ident;
+    TokenType type;
+
     while (isAlphaNum(peek(t)))
         readChar(t);
 
-    addToken(t, TOKEN_IDENTIFIER);
+    ident = malloc(t->current - t->start);
+    for (size_t i = 0; i < t->current - t->start; i++)
+        ident[i] = t->source[i + t->start];
+
+    if ((type = MapGet(&t->reserved, ident)) == ~(unsigned int)0)
+        type = TOKEN_IDENTIFIER;
+
+    free(ident);
+    addToken(t, type);
 }
 
 static bool match(Tokenizer *t, char expected) {
@@ -161,16 +172,35 @@ Tokenizer TokenizerInit(const char *source, size_t len) {
         .start = 0,
         .current = 0,
         .line = 1,
-        .tokens.len = 0
+        .tokens.len = 0,
+        .reserved = MapInit()
     };
 
     for (int i = 0; i < MAX_TOKENS; i++)
         memset(&t.tokens.array[i], 0x00, sizeof(Token));
 
+    MapSet(&t.reserved, "and",    TOKEN_AND);
+    MapSet(&t.reserved, "class",  TOKEN_CLASS);
+    MapSet(&t.reserved, "else",   TOKEN_ELSE);
+    MapSet(&t.reserved, "false",  TOKEN_FALSE);
+    MapSet(&t.reserved, "for",    TOKEN_FOR);
+    MapSet(&t.reserved, "fun",    TOKEN_FUN);
+    MapSet(&t.reserved, "if",     TOKEN_IF);
+    MapSet(&t.reserved, "nil",    TOKEN_NIL);
+    MapSet(&t.reserved, "or",     TOKEN_OR);
+    MapSet(&t.reserved, "print",  TOKEN_PRINT);
+    MapSet(&t.reserved, "return", TOKEN_RETURN);
+    MapSet(&t.reserved, "super",  TOKEN_SUPER);
+    MapSet(&t.reserved, "this",   TOKEN_THIS);
+    MapSet(&t.reserved, "true",   TOKEN_TRUE);
+    MapSet(&t.reserved, "let",    TOKEN_LET);
+    MapSet(&t.reserved, "while",  TOKEN_WHILE);
+
     return t;
 }
 
 void TokenizerFini(Tokenizer *t) {
+    MapFini(&t->reserved);
     free(t->source);
 }
 

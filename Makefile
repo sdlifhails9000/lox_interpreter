@@ -3,7 +3,7 @@ CCFLAGS = -g -I. -Wall -Wextra -Wpedantic
 LDFLAGS = -g -I.
 
 
-SRCS = main.c logging.c token.c tokenizer.c
+SRCS = main.c logging.c token.c tokenizer.c map.c
 OBJS = $(SRCS:.c=.o)
 
 outbin = loxc

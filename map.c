@@ -51,7 +51,7 @@ void MapSet(Map *m, const char *key, TokenType value) {
     Entry *iter;
     for (iter = m->table[i]; iter->next != NULL; iter = iter->next) {
         if (strcmp(key, iter->key) == 0) {
-            iter->key = value;
+            iter->key = key;
             iter->value = value;
             return;
         }

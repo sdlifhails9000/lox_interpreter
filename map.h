@@ -15,9 +15,11 @@ typedef struct {
     Entry *table[TABLE_SIZE];
 } Map;
 
-Map MapInit();
+Map MapInit(void);
 void MapFini(Map *m);
 
 void MapSet(Map *m, const char *key, TokenType value);
 TokenType MapGet(Map *m, const char *key);
+
+#endif
 
