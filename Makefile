@@ -6,7 +6,7 @@ LDFLAGS = -g -I.
 SRCS = main.c logging.c token.c tokenizer.c
 OBJS = $(SRCS:.c=.o)
 
-outbin = loxc.exe
+outbin = loxc
 
 .PHONY: all
 all: $(outbin) $(OBJS)
