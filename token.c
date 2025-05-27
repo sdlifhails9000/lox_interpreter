@@ -2,9 +2,9 @@
 
 #include "token.h"
 
-static void print_str(const StrView str) {
-    for (size_t i = 0; i < str.str_len; i++)
-        putchar(str.p[i]);
+static void print_str(StrView str) {
+    for (size_t i = 0; i < str.len; i++)
+        putchar(str.str[i]);
 }
 
 void TokenPrint(const Token *t) {
@@ -15,14 +15,11 @@ void TokenPrint(const Token *t) {
 
     printf("%d, '",  t->type);
     print_str(t->lexeme);
-    putchar('\'');
+    printf("'");
 
     switch (t->type) {
     case TOKEN_STRING:
-        printf(", '");
-        for (size_t i = 0; i < t->literal.str.str_len; i++)
-            putchar(t->literal.str.p[i]);
-        printf("', len: %zu", t->literal.str.str_len);
+        printf(", '%s', len: %zu", t->literal.str.str, t->literal.str.len);
         break;
 
     case TOKEN_NUMBER:

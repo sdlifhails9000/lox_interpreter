@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "str.h"
+
 typedef enum {
     TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE,
     TOKEN_RIGHT_BRACE, TOKEN_COMMA, TOKEN_DOT, TOKEN_MINUS, TOKEN_PLUS,
@@ -18,25 +20,25 @@ typedef enum {
 
     TOKEN_AND, TOKEN_CLASS, TOKEN_ELSE, TOKEN_FALSE, TOKEN_FUN, TOKEN_FOR,
     TOKEN_IF, TOKEN_NIL, TOKEN_OR, TOKEN_PRINT, TOKEN_RETURN, TOKEN_SUPER,
-    TOKEN_THIS, TOKEN_TRUE, TOKEN_LET, TOKEN_WHILE,
+    TOKEN_THIS, TOKEN_TRUE, TOKEN_VAR, TOKEN_WHILE,
 
     TOKEN_EOF,
 } TokenType;
 
 typedef struct {
-    const char *p;
-    size_t str_len;
-} StrView;
-
-typedef struct {
     TokenType type;
     StrView lexeme;
     union {
-        StrView str;
+        Str str;
         double f;
     } literal;
     int line;
 } Token;
+
+inline void TokenFini(Token *t) {
+    if (t->type == TOKEN_STRING)
+       StrFini(&t->literal.str);
+}
 
 void TokenPrint(const Token *t);
 

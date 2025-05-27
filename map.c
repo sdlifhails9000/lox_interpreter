@@ -3,12 +3,11 @@
 
 #include "map.h"
 
-static inline int hash(const char *str) {
-    int len = strlen(str);
-    return str[0] + str[len-1] + len;
+static inline int hash(StrView str) {
+    return str.str[0] + str.str[str.len] + str.len;
 }
 
-static Entry *pair(const char *key, TokenType value) {
+static Entry *pair(StrView key, TokenType value) {
     Entry *retval = malloc(sizeof(Entry));
     *retval = (Entry){
         .key = key,
@@ -40,7 +39,7 @@ void MapFini(Map *m) {
     }
 }
 
-void MapSet(Map *m, const char *key, TokenType value) {
+void MapSet(Map *m, StrView key, TokenType value) {
     int i = hash(key) % TABLE_SIZE;
 
     if (m->table[i] == NULL) {
@@ -50,7 +49,7 @@ void MapSet(Map *m, const char *key, TokenType value) {
 
     Entry *iter;
     for (iter = m->table[i]; iter->next != NULL; iter = iter->next) {
-        if (strcmp(key, iter->key) == 0) {
+        if (StrCmp(&key, &iter->key) == 0) {
             iter->key = key;
             iter->value = value;
             return;
@@ -60,11 +59,11 @@ void MapSet(Map *m, const char *key, TokenType value) {
     iter->next = pair(key, value);
 }
 
-TokenType MapGet(Map *m, const char *key) {
+TokenType MapGet(Map *m, StrView key) {
     int i = hash(key) % TABLE_SIZE;
 
     for (Entry *iter = m->table[i]; iter != NULL; iter = iter->next) {
-        if (strcmp(key, iter->key) == 0)
+        if (StrCmp(&key, &iter->key) == 0)
             return iter->value;
     }
 

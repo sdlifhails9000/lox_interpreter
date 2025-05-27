@@ -28,24 +28,24 @@ static inline bool isAlphaNum(char c) {
 }
 
 static bool isAtEnd(const Tokenizer *t) {
-    return t->current >= t->source_len;
+    return t->current >= t->source.len;
 }
 
 static char peek(const Tokenizer *t) {
     if (isAtEnd(t))
         return '\0';
     
-    return t->source[t->current];
+    return t->source.str[t->current];
 }
 
 static char peekNext(const Tokenizer *t) {
-    if (t->current + 1 >= t->source_len)
+    if (t->current + 1 >= t->source.len)
         return '\0';
-    return t->source[t->current + 1];
+    return t->source.str[t->current + 1];
 }
 
 static char readChar(Tokenizer *t) {
-    char c = t->source[t->current];
+    char c = t->source.str[t->current];
     t->current++;
 
     return c;
@@ -57,17 +57,15 @@ static void addToken(Tokenizer *t, TokenType type) {
         .line = t->line
     };
 
-    token.lexeme.p = &t->source[t->start];
-    token.lexeme.str_len = t->current - t->start;
+    token.lexeme = StrConstSlice(&t->source, t->start, t->current - 1);
 
     switch (type) {
     case TOKEN_STRING:
-        token.literal.str.p = &t->source[t->start + 1];
-        token.literal.str.str_len = t->current - t->start - 2;
+        token.literal.str = StrSlice(&t->source, t->start + 1, t->current - 2);
         break;
 
     case TOKEN_NUMBER:
-        token.literal.f = atof(&t->source[t->start]);
+        token.literal.f = atof(&t->source.str[t->start]);
         break;
 
     default:
@@ -109,20 +107,17 @@ static void number(Tokenizer *t) {
 }
 
 static void identifier(Tokenizer *t) {
-    char *ident;
+    StrView ident;
     TokenType type;
 
     while (isAlphaNum(peek(t)))
         readChar(t);
 
-    ident = malloc(t->current - t->start);
-    for (size_t i = 0; i < t->current - t->start; i++)
-        ident[i] = t->source[i + t->start];
+    ident = StrConstSlice(&t->source, t->start, t->current - 1);
 
     if ((type = MapGet(&t->reserved, ident)) == ~(unsigned int)0)
         type = TOKEN_IDENTIFIER;
 
-    free(ident);
     addToken(t, type);
 }
 
@@ -130,7 +125,7 @@ static bool match(Tokenizer *t, char expected) {
     if (isAtEnd(t))
         return false;
 
-    if (expected != t->source[t->current])
+    if (expected != t->source.str[t->current])
         return false;
 
     t->current++;
@@ -165,10 +160,9 @@ static void skipWhitespace(Tokenizer *t) {
 
 /* ---- MAIN DEFINITIONS ---- */
 
-Tokenizer TokenizerInit(const char *source, size_t len) {
+Tokenizer TokenizerInit(Str str) {
     Tokenizer t = {
-        .source = strdup(source),
-        .source_len = len,
+        .source = str,
         .start = 0,
         .current = 0,
         .line = 1,
@@ -179,29 +173,31 @@ Tokenizer TokenizerInit(const char *source, size_t len) {
     for (int i = 0; i < MAX_TOKENS; i++)
         memset(&t.tokens.array[i], 0x00, sizeof(Token));
 
-    MapSet(&t.reserved, "and",    TOKEN_AND);
-    MapSet(&t.reserved, "class",  TOKEN_CLASS);
-    MapSet(&t.reserved, "else",   TOKEN_ELSE);
-    MapSet(&t.reserved, "false",  TOKEN_FALSE);
-    MapSet(&t.reserved, "for",    TOKEN_FOR);
-    MapSet(&t.reserved, "fun",    TOKEN_FUN);
-    MapSet(&t.reserved, "if",     TOKEN_IF);
-    MapSet(&t.reserved, "nil",    TOKEN_NIL);
-    MapSet(&t.reserved, "or",     TOKEN_OR);
-    MapSet(&t.reserved, "print",  TOKEN_PRINT);
-    MapSet(&t.reserved, "return", TOKEN_RETURN);
-    MapSet(&t.reserved, "super",  TOKEN_SUPER);
-    MapSet(&t.reserved, "this",   TOKEN_THIS);
-    MapSet(&t.reserved, "true",   TOKEN_TRUE);
-    MapSet(&t.reserved, "let",    TOKEN_LET);
-    MapSet(&t.reserved, "while",  TOKEN_WHILE);
+    MapSet(&t.reserved, ToStrView("and"),    TOKEN_AND);
+    MapSet(&t.reserved, ToStrView("class"),  TOKEN_CLASS);
+    MapSet(&t.reserved, ToStrView("else"),   TOKEN_ELSE);
+    MapSet(&t.reserved, ToStrView("false"),  TOKEN_FALSE);
+    MapSet(&t.reserved, ToStrView("for"),    TOKEN_FOR);
+    MapSet(&t.reserved, ToStrView("fun"),    TOKEN_FUN);
+    MapSet(&t.reserved, ToStrView("if"),     TOKEN_IF);
+    MapSet(&t.reserved, ToStrView("nil"),    TOKEN_NIL);
+    MapSet(&t.reserved, ToStrView("or"),     TOKEN_OR);
+    MapSet(&t.reserved, ToStrView("print"),  TOKEN_PRINT);
+    MapSet(&t.reserved, ToStrView("return"), TOKEN_RETURN);
+    MapSet(&t.reserved, ToStrView("super"),  TOKEN_SUPER);
+    MapSet(&t.reserved, ToStrView("this"),   TOKEN_THIS);
+    MapSet(&t.reserved, ToStrView("true"),   TOKEN_TRUE);
+    MapSet(&t.reserved, ToStrView("var"),    TOKEN_VAR);
+    MapSet(&t.reserved, ToStrView("while"),  TOKEN_WHILE);
 
     return t;
 }
 
 void TokenizerFini(Tokenizer *t) {
     MapFini(&t->reserved);
-    free(t->source);
+    for (int i = 0; i < t->tokens.len; i++)
+        TokenFini(&t->tokens.array[i]);
+    StrFini(&t->source);
 }
 
 void TokenizerGetToken(Tokenizer *t) {
