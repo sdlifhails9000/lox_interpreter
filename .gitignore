@@ -1,3 +1,9 @@
+loxc
+lox
+
+ast_printer.c
+ast_printer.h
+
 # Prerequisites
 *.d
 
