@@ -4,26 +4,19 @@
 #include <string.h>
 #include <time.h>
 
-#include "token.h"
-#include "tokenizer.h"
-#include "logging.h"
-#include "expr.h"
-#include "ast_printer.h"
 #include "str.h"
+#include "logging.h"
+#include "tokenizer.h"
+#include "ast_printer.h"
 
 #define MAX_LINE_SIZE 100
 
 static void run(Str source) {
     Tokenizer lexer = TokenizerInit(source);
-    struct timespec start, end;
-
-    clock_gettime(CLOCK_MONOTONIC, &start);
     const TokenArray *tokens = TokenizerGetAllTokens(&lexer);
-    clock_gettime(CLOCK_MONOTONIC, &end);
 
-    double elapsed_ms = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_nsec - start.tv_nsec) / 1000000.0;
-
-    printf("\nTime taken by the tokenizer: %.3f\n", elapsed_ms);
+    for (size_t i = 0; i < tokens->len; i++)
+        TokenPrint(&tokens->array[i]);
 
     TokenizerFini(&lexer);
 }

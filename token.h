@@ -6,7 +6,7 @@
 
 #include "str.h"
 
-#define MAX_TOKENS 8192
+#define MAX_TOKENS 4096
 
 typedef enum {
     TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE,

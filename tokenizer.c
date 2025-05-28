@@ -274,9 +274,14 @@ void TokenizerGetToken(Tokenizer *t) {
 }
 
 const TokenArray *TokenizerGetAllTokens(Tokenizer *t) {
-    while (!isAtEnd(t)) {
+    while (!isAtEnd(t) && t->tokens.len < MAX_TOKENS) {
         t->start = t->current;
         TokenizerGetToken(t);
+    }
+
+    if (!isAtEnd(t) && t->tokens.len >= MAX_TOKENS) {
+        printf("Max tokens reached!");
+        return NULL;
     }
 
     addToken(t, TOKEN_EOF);
