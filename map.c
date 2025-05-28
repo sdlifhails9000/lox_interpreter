@@ -4,7 +4,7 @@
 #include "map.h"
 
 static inline int hash(StrView str) {
-    return str.str[0] + str.str[str.len] + str.len;
+    return str.str[0] + str.str[str.len - 1] + str.len;
 }
 
 static Entry *pair(StrView key, TokenType value) {
@@ -49,8 +49,7 @@ void MapSet(Map *m, StrView key, TokenType value) {
 
     Entry *iter;
     for (iter = m->table[i]; iter->next != NULL; iter = iter->next) {
-        if (StrCmp(&key, &iter->key) == 0) {
-            iter->key = key;
+        if (StrCmp((Str*)&key, (Str*)&iter->key) == 0) {
             iter->value = value;
             return;
         }
@@ -63,7 +62,7 @@ TokenType MapGet(Map *m, StrView key) {
     int i = hash(key) % TABLE_SIZE;
 
     for (Entry *iter = m->table[i]; iter != NULL; iter = iter->next) {
-        if (StrCmp(&key, &iter->key) == 0)
+        if (StrCmp((Str*)&key, (Str*)&iter->key) == 0)
             return iter->value;
     }
 

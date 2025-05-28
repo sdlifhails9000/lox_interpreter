@@ -6,6 +6,8 @@
 
 #include "str.h"
 
+#define MAX_TOKENS 8192
+
 typedef enum {
     TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE,
     TOKEN_RIGHT_BRACE, TOKEN_COMMA, TOKEN_DOT, TOKEN_MINUS, TOKEN_PLUS,
@@ -35,10 +37,12 @@ typedef struct {
     int line;
 } Token;
 
-inline void TokenFini(Token *t) {
-    if (t->type == TOKEN_STRING)
-       StrFini(&t->literal.str);
-}
+typedef struct {
+    Token array[MAX_TOKENS];
+    size_t len;
+} TokenArray;
+
+void TokenFini(Token *t);
 
 void TokenPrint(const Token *t);
 

@@ -7,13 +7,6 @@
 #include "map.h"
 #include "str.h"
 
-#define MAX_TOKENS 1024
-
-typedef struct {
-    Token array[MAX_TOKENS];
-    size_t len;
-} TokenArray;
-
 typedef struct {
     Str source;
     size_t start;

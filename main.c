@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <time.h>
 
 #include "token.h"
 #include "tokenizer.h"
@@ -14,20 +15,23 @@
 
 static void run(Str source) {
     Tokenizer lexer = TokenizerInit(source);
+    struct timespec start, end;
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
     const TokenArray *tokens = TokenizerGetAllTokens(&lexer);
+    clock_gettime(CLOCK_MONOTONIC, &end);
 
-    for (size_t i = 0; i < tokens->len; i++)
-        TokenPrint(&tokens->array[i]);
+    double elapsed_ms = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_nsec - start.tv_nsec) / 1000000.0;
 
-    putchar('\n');
+    printf("\nTime taken by the tokenizer: %.3f\n", elapsed_ms);
 
     TokenizerFini(&lexer);
 }
 
 static int runFile(const char *path) {
-    FILE *f = NULL;
-    Str buffer = {};
-    size_t size = 0;
+    FILE *f;
+    Str buffer;
+    size_t size;
 
     if ((f = fopen(path, "rb")) == NULL)
         return 1;
@@ -36,73 +40,59 @@ static int runFile(const char *path) {
     size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    buffer = StrEmptyInit(size);
-    fread(&buffer.str, sizeof(char), size, f);
+    buffer = StrEmptyInit(size + 1);
+    int n_read = fread(buffer.str, sizeof(char), size, f);
+    buffer.len = n_read;
 
     run(buffer);
     
     if (hadError) {
-        StrFini(&buffer);
         fclose(f);
         exit(64);
     }
 
-    StrFini(&buffer);
     fclose(f);
     return 0;
 }
 
 static void runPrompt(void) {
-    Str line = StrEmptyInit(MAX_LINE_SIZE);
+    Str line;
     size_t n_maxread = MAX_LINE_SIZE;
 
     while (true) {
         printf(">> ");
+        line = StrEmptyInit(MAX_LINE_SIZE);
         ssize_t n_read = getline(&line.str, &n_maxread, stdin);
+
         if (n_read <= 0) {
             StrFini(&line);
+            printf("\nDone.\n");
             break;
         }
 
+        line.len = n_read;
         run(line);
         hadError = false;
     }
 }
 
 int main(int argc, char **argv) {
-//    if (argc > 2) {
-//        printf("Usage: loxc [script]\n");
-//        return 1;
-//    }
-//
-//    int status = 0;
-//
-//    if (argc == 2) {
-//        if (runFile(argv[1]) == 1) {
-//            perror("Error opening file");
-//            status = 1;
-//        }
-//    } else {
-//        runPrompt();
-//    }
-//
-//    return status;
-    AstPrinter p = AstPrinterInit();
-    
-    AstPrint(
-        &p,
-        BinaryInit(
-            UnaryInit(
-                (Token){ .lexeme = "-" },
-                LiteralInit((Token){ .type = TOKEN_NUMBER, .literal.f = 123 })
-            ),
-            (Token){ .lexeme = "*" },
-            GroupingInit(
-                LiteralInit((Token){ .type = TOKEN_NUMBER, .literal.f = 45.67 })
-            )
-        )
-    );
+    if (argc > 2) {
+        printf("Usage: loxc [script]\n");
+        return 1;
+    }
 
-    return 0;
+    int status = 0;
+
+    if (argc == 2) {
+        if (runFile(argv[1]) == 1) {
+            perror("Error opening file");
+            status = 1;
+        }
+    } else {
+        runPrompt();
+    }
+
+    return status;
 }
 

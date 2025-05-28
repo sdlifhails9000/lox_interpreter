@@ -12,36 +12,22 @@ typedef struct {
 typedef struct {
     char *str;
     size_t len;
+    size_t max_len;
 } Str;
 
-inline Str StrInit(const char *str) {
-    return (Str){
-        .str = strdup(str),
-        .len = strlen(str)
-    };
-}
+Str StrInit(const char *str);
+void StrFini(Str *s);
 
-inline void StrFini(Str *s) {
-    free(s->str);
-}
+Str StrEmptyInit(size_t max_len);
 
-Str StrSlice(Str *s, int i, int j);
-StrView StrConstSlice(Str *s, int i, int j);
+Str StrSlice(Str *s, size_t i, size_t j);
+StrView StrConstSlice(Str *s, size_t i, size_t j);
 
-inline Str StrEmptyInit(int len) {
-    return (Str){
-        .str = calloc(len, sizeof(char)),
-        .len = len
-    };
-}
-
-inline StrView ToStrView(const char *str) {
-    return (StrView){ .str = str, .len = strlen(str) };
-}
+StrView ToStrView(const char *str);
 
 int StrCmp(Str *a, Str *b);
-void StrCpy(Str *src, Str *dest);
-void StrNCpy(Str *src, Str *dest, int n);
+int StrCpy(Str *src, Str *dest);
+int StrNCpy(Str *src, Str *dest, size_t n);
 
 #endif
 

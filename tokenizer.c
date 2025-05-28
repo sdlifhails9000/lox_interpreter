@@ -114,7 +114,6 @@ static void identifier(Tokenizer *t) {
         readChar(t);
 
     ident = StrConstSlice(&t->source, t->start, t->current - 1);
-
     if ((type = MapGet(&t->reserved, ident)) == ~(unsigned int)0)
         type = TOKEN_IDENTIFIER;
 
@@ -170,7 +169,7 @@ Tokenizer TokenizerInit(Str str) {
         .reserved = MapInit()
     };
 
-    for (int i = 0; i < MAX_TOKENS; i++)
+    for (size_t i = 0; i < MAX_TOKENS; i++)
         memset(&t.tokens.array[i], 0x00, sizeof(Token));
 
     MapSet(&t.reserved, ToStrView("and"),    TOKEN_AND);
@@ -195,7 +194,7 @@ Tokenizer TokenizerInit(Str str) {
 
 void TokenizerFini(Tokenizer *t) {
     MapFini(&t->reserved);
-    for (int i = 0; i < t->tokens.len; i++)
+    for (size_t i = 0; i < t->tokens.len; i++)
         TokenFini(&t->tokens.array[i]);
     StrFini(&t->source);
 }
