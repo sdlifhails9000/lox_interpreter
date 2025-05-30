@@ -3,6 +3,9 @@
 
 #include <stdbool.h>
 
+#include "str.h"
+#include "token.h"
+
 extern bool hadError;
 
 typedef enum {
@@ -13,6 +16,7 @@ typedef enum {
 
 void report(ReportLevel level, const char *where, int line, const char *msg);
 void error(int line, const char *msg);
+void error1(Token token, const char *msg);
 
 #endif
 

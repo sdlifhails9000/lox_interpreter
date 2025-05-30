@@ -19,7 +19,7 @@ Map MapInit(void);
 void MapFini(Map *m);
 
 void MapSet(Map *m, StrView str, TokenType value);
-TokenType MapGet(Map *m, StrView key);
+int MapGet(Map *m, StrView key, TokenType *out);
 
 #endif
 

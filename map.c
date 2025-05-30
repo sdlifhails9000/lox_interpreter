@@ -58,14 +58,16 @@ void MapSet(Map *m, StrView key, TokenType value) {
     iter->next = pair(key, value);
 }
 
-TokenType MapGet(Map *m, StrView key) {
+int MapGet(Map *m, StrView key, TokenType *out) {
     int i = hash(key) % TABLE_SIZE;
 
     for (Entry *iter = m->table[i]; iter != NULL; iter = iter->next) {
-        if (StrCmp((Str*)&key, (Str*)&iter->key) == 0)
-            return iter->value;
+        if (StrCmp((Str*)&key, (Str*)&iter->key) == 0) {
+            *out = iter->value;
+            return 0;
+        }
     }
 
-    return ~(unsigned int)0;
+    return -1;
 }
 

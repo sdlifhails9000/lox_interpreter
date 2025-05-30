@@ -2,22 +2,35 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <time.h>
 
 #include "str.h"
 #include "logging.h"
 #include "tokenizer.h"
 #include "ast_printer.h"
+#include "parser.h"
 
 #define MAX_LINE_SIZE 100
 
 static void run(Str source) {
-    Tokenizer lexer = TokenizerInit(source);
-    const TokenArray *tokens = TokenizerGetAllTokens(&lexer);
+    Tokenizer lexer; 
+    const TokenArray *tokens; 
+    Parser parser; 
+    Expr *result; 
 
-    for (size_t i = 0; i < tokens->len; i++)
-        TokenPrint(&tokens->array[i]);
+    lexer = TokenizerInit(source);
+    tokens = TokenizerGetAllTokens(&lexer);
+    parser = ParserInit(tokens);
+    result = ParserParse(&parser);
 
+    if (result == NULL)
+        goto end;
+
+    AstPrinter printer = AstPrinterInit();
+    AstPrint(&printer, result);
+
+    result->fini(result);
+
+end:
     TokenizerFini(&lexer);
 }
 

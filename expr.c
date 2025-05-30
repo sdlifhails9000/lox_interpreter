@@ -2,6 +2,10 @@
 
 #include "expr.h"
 
+static void *tertiaryAccept(Visitor *v, Expr *expr) {
+    return v->visitTertiaryExpr(v, (Tertiary*)expr);
+}
+
 static void *binaryAccept(Visitor *v, Expr *expr) {
     return v->visitBinaryExpr(v, (Binary*)expr);
 }
@@ -16,6 +20,14 @@ static void *groupingAccept(Visitor *v, Expr *expr) {
 
 static void *literalAccept(Visitor *v, Expr *expr) {
     return v->visitLiteralExpr(v, (Literal*)expr);
+}
+
+void TertiaryFini(Expr *t) {
+    Tertiary *_t = (Tertiary*)t;
+    _t->condition->fini(_t->condition);
+    _t->ifTrue->fini(_t->ifTrue);
+    _t->ifFalse->fini(_t->ifFalse);
+    free(t);
 }
 
 void BinaryFini(Expr *b) {
@@ -40,9 +52,20 @@ void GroupingFini(Expr *g) {
 }
 
 void LiteralFini(Expr *l) {
-    Literal *_l = (Literal*)l;
-    TokenFini(&_l->literal);
     free(l);
+}
+
+Tertiary *TertiaryInit(Expr *condition, Expr *ifTrue, Expr *ifFalse) {
+    Tertiary *retval = malloc(sizeof(Tertiary));
+    *retval = (Tertiary){
+        .base.accept = tertiaryAccept,
+        .base.fini =  TertiaryFini,
+        .condition = condition,
+        .ifTrue = ifTrue,
+        .ifFalse = ifFalse
+    };
+
+    return retval;
 }
 
 Binary *BinaryInit(Expr *left, Token operator, Expr *right) {
@@ -69,12 +92,12 @@ Grouping *GroupingInit(Expr *expr) {
     return retval;
 }
 
-Literal *LiteralInit(Token literal) {
+Literal *LiteralInit(Object object) {
     Literal *retval = malloc(sizeof(Literal));
     *retval = (Literal){
         .base.accept = literalAccept,
         .base.fini = LiteralFini,
-        .literal = literal
+        .object = object
     };
 
     return retval;

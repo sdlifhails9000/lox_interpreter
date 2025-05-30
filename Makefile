@@ -2,7 +2,7 @@ CC = gcc
 CCFLAGS = -O2 -g -I. -Wall -Wextra -Wpedantic
 LDFLAGS = -g -I.
 
-SRCS = main.c logging.c token.c tokenizer.c map.c expr.c ast_printer.c str.c
+SRCS = main.c logging.c token.c tokenizer.c map.c expr.c ast_printer.c str.c parser.c
 OBJS = $(SRCS:.c=.o)
 
 outbin = loxc

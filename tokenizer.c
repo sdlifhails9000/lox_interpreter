@@ -114,7 +114,7 @@ static void identifier(Tokenizer *t) {
         readChar(t);
 
     ident = StrConstSlice(&t->source, t->start, t->current - 1);
-    if ((type = MapGet(&t->reserved, ident)) == ~(unsigned int)0)
+    if (MapGet(&t->reserved, ident, &type))
         type = TOKEN_IDENTIFIER;
 
     addToken(t, type);
@@ -212,7 +212,9 @@ void TokenizerGetToken(Tokenizer *t) {
     case '-': addToken(t, TOKEN_MINUS); break;
     case '+': addToken(t, TOKEN_PLUS); break;
     case ';': addToken(t, TOKEN_SEMICOLON); break;
+    case ':': addToken(t, TOKEN_COLON); break;
     case '*': addToken(t, TOKEN_STAR); break;
+    case '?': addToken(t, TOKEN_QUESTION); break;
     case '"': string(t); break;
     case '=':
         addToken(t, match(t, '=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
