@@ -5,13 +5,13 @@ LDFLAGS = -g -I.
 SRCS = main.c logging.c token.c tokenizer.c map.c expr.c ast_printer.c str.c parser.c
 OBJS = $(SRCS:.c=.o)
 
-outbin = loxc
+outbin = lox
 
 .PHONY: all
 all: $(outbin) $(OBJS)
 
 $(outbin): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(LDFLAGS) -o $@ $^	
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c -o $@ $<
