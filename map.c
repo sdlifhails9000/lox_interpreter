@@ -3,14 +3,15 @@
 
 #include "map.h"
 
-static inline int hash(StrView str) {
-    return str.str[0] + str.str[str.len - 1] + str.len;
+static inline int hash(const char *str) {
+    int len = strlen(str);
+    return str[0] + str[len - 1] + len;
 }
 
-static Entry *pair(StrView key, TokenType value) {
+static Entry *pair(const char *key, TokenType value) {
     Entry *retval = malloc(sizeof(Entry));
     *retval = (Entry){
-        .key = key,
+        .key = strdup(key),
         .value = value,
         .next = NULL
     };
@@ -20,7 +21,6 @@ static Entry *pair(StrView key, TokenType value) {
 
 Map MapInit(void) {
     Map retval;
-
     for (int i = 0; i < TABLE_SIZE; i++)
         retval.table[i] = NULL;
 
@@ -34,12 +34,13 @@ void MapFini(Map *m) {
 
         for (Entry *iter = m->table[i], *next = NULL; iter != NULL; iter = next) {
             next = iter->next;
+            free(iter->key);
             free(iter);
         }
     }
 }
 
-void MapSet(Map *m, StrView key, TokenType value) {
+void MapSet(Map *m, const char *key, TokenType value) {
     int i = hash(key) % TABLE_SIZE;
 
     if (m->table[i] == NULL) {
@@ -49,7 +50,7 @@ void MapSet(Map *m, StrView key, TokenType value) {
 
     Entry *iter;
     for (iter = m->table[i]; iter->next != NULL; iter = iter->next) {
-        if (StrCmp((Str*)&key, (Str*)&iter->key) == 0) {
+        if (strcmp(key, iter->key) == 0) {
             iter->value = value;
             return;
         }
@@ -58,11 +59,16 @@ void MapSet(Map *m, StrView key, TokenType value) {
     iter->next = pair(key, value);
 }
 
-int MapGet(Map *m, StrView key, TokenType *out) {
+int MapGet(Map *m, const char *key, TokenType *out) {
     int i = hash(key) % TABLE_SIZE;
 
     for (Entry *iter = m->table[i]; iter != NULL; iter = iter->next) {
-        if (StrCmp((Str*)&key, (Str*)&iter->key) == 0) {
+        int n_a = strlen(key);
+        int n_b = strlen(iter->key);
+        if (n_a != n_b)
+            continue;
+
+        if (strcmp(key, iter->key) == 0) {
             *out = iter->value;
             return 0;
         }

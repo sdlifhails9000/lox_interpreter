@@ -6,7 +6,7 @@
 #define TABLE_SIZE 100
 
 typedef struct {
-    StrView key;
+    char *key;
     TokenType value;
     void *next;
 } Entry;
@@ -18,8 +18,8 @@ typedef struct {
 Map MapInit(void);
 void MapFini(Map *m);
 
-void MapSet(Map *m, StrView str, TokenType value);
-int MapGet(Map *m, StrView key, TokenType *out);
+void MapSet(Map *m, const char *str, TokenType value);
+int MapGet(Map *m, const char *key, TokenType *out);
 
 #endif
 

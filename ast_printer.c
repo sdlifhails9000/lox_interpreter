@@ -4,17 +4,11 @@
 #include "ast_printer.h"
 #include "str.h"
 
-void print_str(StrView str) {
-    for (size_t i = 0; i < str.len; i++)
-        putchar(str.str[i]);
-}
-
-void parenthesize(Visitor *v, StrView str, int n, ...) {
+void parenthesize(Visitor *v, const char *name, int n, ...) {
     va_list exprs;
     va_start(exprs, n);
 
-    putchar('(');
-    print_str(str);
+    printf("(%s", name);
     
     for (int i = 0; i < n; i++) {
         Expr *expr = va_arg(exprs, Expr*);
@@ -29,22 +23,32 @@ void parenthesize(Visitor *v, StrView str, int n, ...) {
 /* ---- VISITORS ---- */
 
 void *visitTertiaryExpr(Visitor *v, Tertiary *t) {
-    parenthesize(v, ToStrView("?:"), 3, t->condition, t->ifTrue, t->ifFalse);
+    parenthesize(v, "?:", 3, t->condition, t->ifTrue, t->ifFalse);
     return NULL;
 }
 
 void *visitBinaryExpr(Visitor *v, Binary *b) {
-    parenthesize(v, b->operator.lexeme, 2, b->left, b->right);
+    char *lexeme = malloc(b->operator.lexeme_len + 1);
+    lexeme[b->operator.lexeme_len] = '\0';
+    strncpy(lexeme, b->operator.lexeme, b->operator.lexeme_len);
+    parenthesize(v, lexeme, 2, b->left, b->right);
+    free(lexeme);
+
     return NULL;
 }
 
 void *visitUnaryExpr(Visitor *v, Unary *u) {
-    parenthesize(v, u->operator.lexeme, 1, u->right);
+    char *lexeme = malloc(u->operator.lexeme_len + 1);
+    lexeme[u->operator.lexeme_len] = '\0';
+    strncpy(lexeme, u->operator.lexeme, u->operator.lexeme_len);
+    parenthesize(v, lexeme, 1, u->right);
+    free(lexeme);
+    
     return NULL;
 }
 
 void *visitGroupingExpr(Visitor *v, Grouping *g) {
-    parenthesize(v, ToStrView("group"), 1, g->expr);
+    parenthesize(v, "group", 1, g->expr);
     return NULL;
 }
 
@@ -61,7 +65,7 @@ void *visitLiteralExpr(__attribute__((unused)) Visitor *v, Literal *l) {
         printf("%.3lf", obj.value.f);
         break;
     case OBJECT_STR:
-        print_str(obj.value.str);
+        printf("%s", obj.value.str);
     }
 
     return NULL;

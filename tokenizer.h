@@ -8,7 +8,8 @@
 #include "str.h"
 
 typedef struct {
-    Str source;
+    char *source;
+    size_t source_len;
     size_t start;
     size_t current;
     size_t line;
@@ -17,7 +18,7 @@ typedef struct {
     Map reserved;
 } Tokenizer;
 
-Tokenizer TokenizerInit(Str source);
+Tokenizer TokenizerInit(char *source, size_t len);
 void TokenizerFini(Tokenizer *t);
 
 const TokenArray *TokenizerGetAllTokens(Tokenizer *t);

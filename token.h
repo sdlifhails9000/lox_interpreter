@@ -29,9 +29,10 @@ typedef enum {
 
 typedef struct {
     TokenType type;
-    StrView lexeme;
+    const char *lexeme;
+    size_t lexeme_len;
     union {
-        Str str;
+        char *str;
         double f;
     } literal;
     int line;

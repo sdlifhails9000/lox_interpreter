@@ -18,7 +18,7 @@ static Object createObject(enum ObjectType type, void *value) {
         retval.value.f = *(double*)value;
         break;
     case OBJECT_STR:
-        retval.value.str = ToStrView(value);
+        retval.value.str = strdup((char*)value);
         break;
     default:
         break;
@@ -123,7 +123,7 @@ static Expr *primary(Parser *p) {
     } else if (match(p, 1, TOKEN_NIL)) {
         return (Expr*)LiteralInit(createObject(OBJECT_NIL, NULL));
     } else if (match(p, 1, TOKEN_STRING)) {
-        Str str = previous(p).literal.str;
+        char *str = strdup(previous(p).literal.str);
         return (Expr*)LiteralInit(createObject(OBJECT_STR, &str));
     } else if (match(p, 1, TOKEN_NUMBER)) {
         double f = previous(p).literal.f;
@@ -142,7 +142,7 @@ static Expr *primary(Parser *p) {
         return (Expr*)GroupingInit(expr);
     }
 
-    parser_error(previous(p), "Expected literal.\n");
+    parser_error(peek(p), "Expected literal.\n");
     return NULL;
 }
 
@@ -300,16 +300,14 @@ static Expr *tertiary(Parser *p) {
 
 /* ---- MAIN METHODS ---- */
 
-Parser ParserInit(TokenArray *tokens) {
+Parser ParserInit(const TokenArray *tokens) {
     return (Parser){ .tokens = tokens, .current = 0 };
 }
 
 Expr *ParserParse(Parser *p) {
     Expr *result = tertiary(p);
-    if (hadError) {
-        result->fini(result);
+    if (hadError)
         return NULL;
-    }
 
     return result;
 }

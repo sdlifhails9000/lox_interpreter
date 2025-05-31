@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "logging.h"
 #include "token.h"
@@ -15,7 +16,10 @@ void report(ReportLevel level, const char *where, int line, const char *msg) {
     case LEVEL_ERROR: str_level = "ERROR"; break;
     }
 
-    fprintf(stderr, "[%s @ line %d] %s: %s", str_level, line, where, msg);
+    if (where != NULL)
+        fprintf(stderr, "[%s @ line %d] %s: %s", str_level, line, where, msg);
+    else
+        fprintf(stderr, "[%s @ line %d] %s", str_level, line, msg);        
 }
 
 void error(int line, const char *msg) {
@@ -27,10 +31,9 @@ void error1(Token token, const char *msg) {
     if (token.type == TOKEN_EOF) {
         report(LEVEL_ERROR, "At the end", token.line, msg);
     } else {
-        char where[50] = {0};
-        const char *lexeme = StrViewToConstCStr(&token.lexeme);
-        snprintf(where, sizeof(where), "At '%s'", lexeme);
-        free(lexeme);
+        char where[50] = "At '";
+        strncat(where, token.lexeme, token.lexeme_len);
+        strcat(where, "'");
         report(LEVEL_ERROR, where, token.line, msg);
     }
 

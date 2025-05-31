@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "str.h"
 #include "logging.h"
@@ -11,13 +12,13 @@
 
 #define MAX_LINE_SIZE 100
 
-static void run(Str source) {
+static void run(char *source, size_t len) {
     Tokenizer lexer; 
     const TokenArray *tokens; 
     Parser parser; 
     Expr *result; 
 
-    lexer = TokenizerInit(source);
+    lexer = TokenizerInit(source, len);
     tokens = TokenizerGetAllTokens(&lexer);
     parser = ParserInit(tokens);
     result = ParserParse(&parser);
@@ -36,7 +37,7 @@ end:
 
 static int runFile(const char *path) {
     FILE *f;
-    Str buffer;
+    char *buffer;
     size_t size;
 
     if ((f = fopen(path, "rb")) == NULL)
@@ -46,11 +47,10 @@ static int runFile(const char *path) {
     size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    buffer = StrEmptyInit(size + 1);
-    int n_read = fread(buffer.str, sizeof(char), size, f);
-    buffer.len = n_read;
+    buffer = malloc(size + 1);
+    fread(buffer, sizeof(char), size, f);
 
-    run(buffer);
+    run(buffer, size);
     
     if (hadError) {
         fclose(f);
@@ -62,22 +62,21 @@ static int runFile(const char *path) {
 }
 
 static void runPrompt(void) {
-    Str line;
+    char *line = NULL;
     size_t n_maxread = MAX_LINE_SIZE;
 
     while (true) {
         printf(">> ");
-        line = StrEmptyInit(MAX_LINE_SIZE);
-        ssize_t n_read = getline(&line.str, &n_maxread, stdin);
+        line = malloc(MAX_LINE_SIZE * sizeof(char));
+        ssize_t n_read = getline(&line, &n_maxread, stdin);
 
         if (n_read <= 0) {
-            StrFini(&line);
             printf("\nDone.\n");
+            free(line);
             break;
         }
 
-        line.len = n_read;
-        run(line);
+        run(line, n_read);
         hadError = false;
     }
 }

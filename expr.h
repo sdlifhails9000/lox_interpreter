@@ -14,7 +14,7 @@ typedef struct {
     union {
         bool b;
         double f;
-        StrView str;
+        char *str;
     } value;
 } Object;
 
