@@ -2,6 +2,7 @@
 #define EXPR_H_
 
 #include <stdbool.h>
+
 #include "token.h"
 
 typedef struct {

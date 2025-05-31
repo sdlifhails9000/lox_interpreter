@@ -5,7 +5,6 @@
 
 #include "token.h"
 #include "map.h"
-#include "str.h"
 
 typedef struct {
     char *source;

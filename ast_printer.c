@@ -2,7 +2,6 @@
 #include <stdarg.h>
 
 #include "ast_printer.h"
-#include "str.h"
 
 void parenthesize(Visitor *v, const char *name, int n, ...) {
     va_list exprs;

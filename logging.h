@@ -3,7 +3,6 @@
 
 #include <stdbool.h>
 
-#include "str.h"
 #include "token.h"
 
 extern bool hadError;
