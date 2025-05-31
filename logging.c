@@ -7,7 +7,7 @@
 bool hadError = false;
 
 void report(ReportLevel level, const char *where, int line, const char *msg) {
-    const char *str_level;
+    const char *str_level = NULL;
 
     switch (level) {
     case LEVEL_INFO: str_level = "INFO"; break;

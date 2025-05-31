@@ -47,4 +47,3 @@ void TokenFini(Token *t);
 void TokenPrint(const Token *t);
 
 #endif
-
