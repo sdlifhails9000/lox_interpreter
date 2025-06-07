@@ -1,0 +1,1 @@
+/usr/bin/gcc -g CMakeFiles/lox.dir/main.c.o CMakeFiles/lox.dir/lexer.c.o CMakeFiles/lox.dir/parser.c.o CMakeFiles/lox.dir/logging.c.o CMakeFiles/lox.dir/expr.c.o CMakeFiles/lox.dir/ast_printer.c.o CMakeFiles/lox.dir/interpreter.c.o -o lox 
