@@ -3,34 +3,37 @@
 
 #include <stdbool.h>
 
-#include "token.h"
+#include "lexer.h"
+#include "object.h"
 
-typedef struct {
-    enum ObjectType {
-        OBJECT_NUM = 0,
-        OBJECT_BOOL,
-        OBJECT_STR,
-        OBJECT_NIL
-    } type;
-    union {
-        bool b;
-        double f;
-        char *str;
-    } value;
-} Object;
+typedef enum {
+    OPER_ADD,
+    OPER_SUB,
+    OPER_MUL,
+    OPER_DIV,
+    OPER_COMMA,
+    OPER_EQUAL,
+    OPER_NOT_EQUAL,
+    OPER_LESS,
+    OPER_LESS_EQUAL,
+    OPER_GREATER,
+    OPER_GREATER_EQUAL,
+    OPER_NEGATE,
+    OPER_BOOL_NOT
+} Operation;
 
-typedef struct Visitor Visitor;
-typedef struct Expr Expr;
+typedef struct ExprVisitor ExprVisitor;
 
-struct Expr {
-    void *(*accept)(Visitor *v, Expr *expr);
+typedef struct  {
+    void *(*accept)(ExprVisitor *v, Expr *expr);
     void (*fini)(Expr *expr);
-};
+    int line;
+} Expr;
 
 typedef struct {
     Expr base;
     Expr *left;
-    Token operator;
+    Operation operation;
     Expr *right;
 } Binary;
 
@@ -43,7 +46,7 @@ typedef struct {
 
 typedef struct {
     Expr base;
-    Token operator;
+    Operation operation;
     Expr *right;
 } Unary;
 
@@ -54,28 +57,28 @@ typedef struct {
 
 typedef struct {
     Expr base;
-    Object object;
+    Object *object;
 } Literal;
 
-Binary *BinaryInit(Expr *left, Token operator, Expr *right);
+Binary *BinaryInit(Expr *left, Operation oper, Expr *right);
 Tertiary *TertiaryInit(Expr *condition, Expr *ifTrue, Expr *ifFalse);
-Unary *UnaryInit(Token operator, Expr *right);
+Unary *UnaryInit(Operation oper, Expr *right);
 Grouping *GroupingInit(Expr *expr);
-Literal *LiteralInit(Object object);
+Literal *LiteralInit(Object *object);
 
+void ExprFini(Expr *e);
 void TertiaryFini(Expr *t);
 void BinaryFini(Expr *b);
 void UnaryFini(Expr *u);
 void GroupingFini(Expr *g);
 void LiteralFini(Expr *l);
 
-struct Visitor {
-    void *(*visitBinaryExpr)(Visitor *v, Binary *b);
-    void *(*visitTertiaryExpr)(Visitor *v, Tertiary *t);
-    void *(*visitGroupingExpr)(Visitor *v, Grouping *g);
-    void *(*visitLiteralExpr)(Visitor *v, Literal *l);
-    void *(*visitUnaryExpr)(Visitor *v, Unary *u);
+struct ExprVisitor {
+    void *(*visitBinaryExpr)(ExprVisitor *v, Binary *b);
+    void *(*visitTertiaryExpr)(ExprVisitor *v, Tertiary *t);
+    void *(*visitGroupingExpr)(ExprVisitor *v, Grouping *g);
+    void *(*visitLiteralExpr)(ExprVisitor *v, Literal *l);
+    void *(*visitUnaryExpr)(ExprVisitor *v, Unary *u);
 };
 
 #endif
-

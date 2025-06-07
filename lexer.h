@@ -1,10 +1,11 @@
-#ifndef TOKEN_H_
-#define TOKEN_H_
+#ifndef TOKENIZER_H_
+#define TOKENIZER_H_
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <stddef.h>
 
-#define MAX_TOKENS 4096
+#include "object.h"
+
+#define TABLE_SIZE 100
 
 typedef enum {
     TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE,
@@ -23,26 +24,45 @@ typedef enum {
     TOKEN_THIS, TOKEN_TRUE, TOKEN_VAR, TOKEN_WHILE,
 
     TOKEN_EOF,
+
+    TOKEN_ILLEGAL
 } TokenType;
 
 typedef struct {
     TokenType type;
     const char *lexeme;
     size_t lexeme_len;
-    union {
-        char *str;
-        double f;
-    } literal;
     int line;
 } Token;
 
+Token TokenInit(TokenType type, const char *lexeme, size_t lexeme_len);
+
+#define TokenIllegal (Token){ .type = TOKEN_ILLEGAL }
+#define TokenEOF (Token){ .type = TOKEN_EOF }
+
 typedef struct {
-    Token array[MAX_TOKENS];
-    size_t len;
-} TokenArray;
+    char *key;
+    TokenType value;
+    void *next;
+} __Entry;
 
-void TokenFini(Token *t);
+typedef struct {
+    __Entry *buckets[TABLE_SIZE];
+} __Map;
 
-void TokenPrint(const Token *t);
+typedef struct {
+    const char *source;
+    size_t source_len;
+    size_t start;
+    size_t current;
+    size_t line;
+    __Map reserved;
+} Lexer;
+
+Lexer LexerInit(const char *source, size_t len);
+void LexerFini(Lexer *l);
+Token LexerGetToken(Lexer *l);
+bool LexerIsDone(const Lexer* l);
 
 #endif
+

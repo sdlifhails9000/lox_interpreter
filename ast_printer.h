@@ -4,7 +4,7 @@
 #include "expr.h"
 
 typedef struct {
-    Visitor base;
+    ExprVisitor base;
 } AstPrinter;
 
 AstPrinter AstPrinterInit();

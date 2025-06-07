@@ -19,7 +19,7 @@ Map MapInit(void);
 void MapFini(Map *m);
 
 void MapSet(Map *m, const char *str, TokenType value);
-int MapGet(Map *m, const char *key, TokenType *out);
+TokenType MapGet(Map *m, const char *key, TokenType default);
 
 #endif
 

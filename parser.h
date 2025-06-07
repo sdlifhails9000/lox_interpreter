@@ -1,11 +1,10 @@
-#include "token.h"
+#include "lexer.h"
 #include "expr.h"
 
 typedef struct {
-   const TokenArray *tokens;
+   const Token *tokens;
    size_t current;
 } Parser;
 
-Parser ParserInit(const TokenArray *tokens);
+Parser ParserInit(const Token tokens[]);
 Expr *ParserParse(Parser *p);
-

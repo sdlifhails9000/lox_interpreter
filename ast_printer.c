@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "ast_printer.h"
 
-void parenthesize(Visitor *v, const char *name, int n, ...) {
+void parenthesize(ExprVisitor *v, const char *name, int n, ...) {
     va_list exprs;
     va_start(exprs, n);
 
@@ -19,52 +21,93 @@ void parenthesize(Visitor *v, const char *name, int n, ...) {
     va_end(exprs);
 }
 
-/* ---- VISITORS ---- */
+/* ---- ExprVisitorS ---- */
 
-void *visitTertiaryExpr(Visitor *v, Tertiary *t) {
+void *visitTertiaryExpr(ExprVisitor *v, Tertiary *t) {
     parenthesize(v, "?:", 3, t->condition, t->ifTrue, t->ifFalse);
     return NULL;
 }
 
-void *visitBinaryExpr(Visitor *v, Binary *b) {
-    char *lexeme = malloc(b->operator.lexeme_len + 1);
-    lexeme[b->operator.lexeme_len] = '\0';
-    strncpy(lexeme, b->operator.lexeme, b->operator.lexeme_len);
+void *visitBinaryExpr(ExprVisitor *v, Binary *b) {
+    char lexeme[3] = {0};
+
+    switch (b->operation) {
+    case OPER_ADD:
+        lexeme[0] = '+';
+        break;
+    case OPER_SUB:
+        lexeme[0] = '-';
+        break;
+    case OPER_MUL:
+        lexeme[0] = '*';
+        break;
+    case OPER_DIV:
+        lexeme[0] = '/';
+        break;
+
+    case OPER_LESS_EQUAL:
+        lexeme[1] = '=';
+    case OPER_LESS:
+        lexeme[0] = '<';
+        break;
+    
+    case OPER_GREATER_EQUAL:
+        lexeme[1] = '=';
+    case OPER_GREATER:
+        lexeme[0] = '>';
+        break;
+
+    case OPER_EQUAL:
+        lexeme[0] = lexeme[1] = '=';
+        break;
+
+    default:
+        break;
+    }
+
     parenthesize(v, lexeme, 2, b->left, b->right);
-    free(lexeme);
 
     return NULL;
 }
 
-void *visitUnaryExpr(Visitor *v, Unary *u) {
-    char *lexeme = malloc(u->operator.lexeme_len + 1);
-    lexeme[u->operator.lexeme_len] = '\0';
-    strncpy(lexeme, u->operator.lexeme, u->operator.lexeme_len);
+void *visitUnaryExpr(ExprVisitor *v, Unary *u) {
+    char lexeme[1] = {0};
+
+    switch (u->operation) {
+    case OPER_BOOL_NOT:
+        lexeme[0] = '!';
+        break;
+    case OPER_NEGATE:
+        lexeme[0] = '-';
+        break;
+    default:
+        break;
+    }
+
     parenthesize(v, lexeme, 1, u->right);
-    free(lexeme);
     
     return NULL;
 }
 
-void *visitGroupingExpr(Visitor *v, Grouping *g) {
+void *visitGroupingExpr(ExprVisitor *v, Grouping *g) {
     parenthesize(v, "group", 1, g->expr);
     return NULL;
 }
 
-void *visitLiteralExpr(__attribute__((unused)) Visitor *v, Literal *l) {
-    Object obj = l->object;
-    switch (obj.type) {
+void *visitLiteralExpr(__attribute__((unused)) ExprVisitor *v, Literal *l) {
+    Object *obj = l->object;
+    switch (obj->type) {
     case OBJECT_BOOL:
-        printf("%s", obj.value.b ? "true" : "false");
+        printf("%s", obj->value.b ? "true" : "false");
         break;
     case OBJECT_NIL:
         printf("nil");
         break;
-    case OBJECT_NUM:
-        printf("%.3lf", obj.value.f);
+    case OBJECT_NUMBER:
+        printf("%.3lf", obj->value.f);
         break;
-    case OBJECT_STR:
-        printf("%s", obj.value.str);
+    case OBJECT_STRING:
+        printf("'%s'", obj->value.str);
     }
 
     return NULL;
@@ -74,7 +117,7 @@ void *visitLiteralExpr(__attribute__((unused)) Visitor *v, Literal *l) {
 
 AstPrinter AstPrinterInit() {
     return (AstPrinter){
-        .base = (Visitor){
+        .base = (ExprVisitor){
             .visitTertiaryExpr = visitTertiaryExpr,
             .visitBinaryExpr = visitBinaryExpr,
             .visitUnaryExpr = visitUnaryExpr,
@@ -85,6 +128,6 @@ AstPrinter AstPrinterInit() {
 }
 
 void AstPrint(AstPrinter *a, Expr *e) {
-    e->accept((Visitor*)a, e);
+    e->accept((ExprVisitor*)a, e);
     putchar('\n');
 }

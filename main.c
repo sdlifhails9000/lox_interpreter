@@ -5,68 +5,116 @@
 #include <sys/types.h>
 
 #include "logging.h"
-#include "tokenizer.h"
+#include "lexer.h"
 #include "ast_printer.h"
 #include "parser.h"
+#include "interpreter.h"
 
+#define MAX_TOKENS 4096
 #define MAX_LINE_SIZE 100
 
-static void run(char *source, size_t len) {
-    Tokenizer lexer; 
-    const TokenArray *tokens; 
-    Parser parser; 
-    Expr *result; 
+static inline void print_str(const char *str, size_t len) {
+    for (size_t i = 0; i < len; i++)
+        putchar(str[i]);
+}
 
-    lexer = TokenizerInit(source, len);
-    tokens = TokenizerGetAllTokens(&lexer);
+static void print_token(const Token *t) {
+    if (t->type == TOKEN_EOF) {
+        printf("EOF\n");
+        return;
+    }
+
+    printf("%d, '",  t->type);
+    print_str(t->lexeme, t->lexeme_len);
+    printf("'\n");
+}
+
+static int run(char *source, size_t len) {
+    Lexer lexer; 
+    Parser parser;
+    Interpreter interpreter;
+    Token tokens[MAX_TOKENS]; 
+    Expr *result; 
+    Object *value;
+
+    lexer = LexerInit(source, len);
+    for (int i = 0; !LexerIsDone(&lexer) && i < MAX_TOKENS; i++) {
+        tokens[i] = LexerGetToken(&lexer);
+        if (tokens[i].type == TOKEN_ILLEGAL) {
+            LexerFini(&lexer);
+            return -1;
+        }
+        
+        print_token(&tokens[i]);
+    }
+    LexerFini(&lexer);
+
     parser = ParserInit(tokens);
     result = ParserParse(&parser);
-
     if (result == NULL)
-        goto end;
+        return -1;
 
-    AstPrinter printer = AstPrinterInit();
-    AstPrint(&printer, result);
+    AstPrinter ast = AstPrinterInit();
+    AstPrint(&ast, result);
 
-    result->fini(result);
+    interpreter = InterpreterInit();
+    value = InterpretInterpret(&interpreter, result);
+    if (value == NULL)
+        return -1;
 
-end:
-    TokenizerFini(&lexer);
+    ExprFini(result);
+
+    switch (value->type) {
+    case OBJECT_NUMBER:
+        printf("%.3f\n", value->value.f);
+        break;
+    case OBJECT_BOOL:
+        printf("%s\n", value->value.b ? "true" : "false");
+        break;
+    case OBJECT_NIL:
+        printf("nil\n");
+        break;
+    case OBJECT_STRING:
+        printf("'%s'\n", value->value.str);
+        break;
+    }
+
+    ObjectFini(value);
+
+    return 0;
 }
 
 static int runFile(const char *path) {
     FILE *f;
     char *buffer;
     size_t size;
+    int retval = 0;
 
     if ((f = fopen(path, "rb")) == NULL)
-        return 1;
+        return -1;
     
     fseek(f, 0, SEEK_END);
     size = ftell(f);
-    fseek(f, 0, SEEK_SET);
+    rewind(f);
 
     buffer = malloc(size + 1);
     fread(buffer, sizeof(char), size, f);
 
-    run(buffer, size);
-    
-    if (hadError) {
-        fclose(f);
-        exit(64);
-    }
+    run(buffer, size);    
+    if (hadError)
+        retval = -1;
 
+    free(buffer);
     fclose(f);
-    return 0;
+    return retval;
 }
 
 static void runPrompt(void) {
-    char *line = NULL;
+    char *line = malloc(MAX_LINE_SIZE * sizeof(char));
     size_t n_maxread = MAX_LINE_SIZE;
 
     while (true) {
         printf(">> ");
-        line = malloc(MAX_LINE_SIZE * sizeof(char));
         ssize_t n_read = getline(&line, &n_maxread, stdin);
 
         if (n_read <= 0) {
@@ -82,7 +130,7 @@ static void runPrompt(void) {
 
 int main(int argc, char **argv) {
     if (argc > 2) {
-        printf("Usage: loxc [script]\n");
+        printf("Usage: lox [script]\n");
         return 1;
     }
 

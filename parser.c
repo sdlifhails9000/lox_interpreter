@@ -1,45 +1,27 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <string.h>
 
+#include "object.h"
 #include "logging.h"
 #include "parser.h"
 
 /* ---- HELPER FUNCTIONS ---- */
 
-static Object createObject(enum ObjectType type, void *value) {
-    Object retval = { .type = type };
-
-    switch (type) {
-    case OBJECT_BOOL:
-        retval.value.b = *(bool*)value;
-        break;
-    case OBJECT_NUM:
-        retval.value.f = *(double*)value;
-        break;
-    case OBJECT_STR:
-        retval.value.str = strdup((char*)value);
-        break;
-    default:
-        break;
-    }
-
-    return retval;
+static inline const Token *previous(Parser *p) {
+    return &p->tokens[p->current - 1];
 }
 
-static inline Token previous(Parser *p) {
-    return p->tokens->array[p->current - 1];
-}
-
-static inline Token peek(Parser *p) {
-    return p->tokens->array[p->current];
+static inline const Token *peek(Parser *p) {
+    return &p->tokens[p->current];
 }
 
 static inline bool isAtEnd(Parser *p) {
-    return peek(p).type == TOKEN_EOF;
+    return peek(p)->type == TOKEN_EOF;
 }
 
-static inline Token readToken(Parser *p) {
+static inline const Token *readToken(Parser *p) {
     if (!isAtEnd(p))
         p->current++;
 
@@ -50,17 +32,17 @@ static inline bool check_type(Parser *p, TokenType type) {
     if (isAtEnd(p))
         return false;
 
-    return peek(p).type == type;
+    return peek(p)->type == type;
 }
 
 static void synchronise(Parser *p) {
     readToken(p);
     
     while (!isAtEnd(p)) {
-        if (previous(p).type == TOKEN_SEMICOLON)
+        if (previous(p)->type == TOKEN_SEMICOLON)
             return;
 
-        switch (peek(p).type) {
+        switch (peek(p)->type) {
         case TOKEN_CLASS:
         case TOKEN_FUN:
         case TOKEN_VAR:
@@ -78,18 +60,17 @@ static void synchronise(Parser *p) {
     }
 }
 
-static void parser_error(Token token, const char *msg) {
-    error1(token, msg);
+static void parser_error(const Token *token, const char *msg) {
+    error1(*token, msg);
 }
 
-static int consume(Parser *p, TokenType type, const char *msg, Token *out) {
-    if (check_type(p, type)) {
-        *out = readToken(p);
-        return 0;
+static const Token *consume(Parser *p, TokenType type, const char *msg) {
+    if (!check_type(p, type)) {
+        parser_error(peek(p), msg);
+        return NULL;
     }
     
-    parser_error(peek(p), msg);
-    return -1;
+    return readToken(p);
 }
 
 static bool match(Parser *p, int n, ...) {
@@ -101,8 +82,8 @@ static bool match(Parser *p, int n, ...) {
     for (int i = 0; i < n; i++) {
         TokenType type = va_arg(types, TokenType);
         if (check_type(p, type)) {
-            readToken(p);
             va_end(types);
+            readToken(p);
             return true;
         }
     }
@@ -114,28 +95,32 @@ static bool match(Parser *p, int n, ...) {
 static Expr *tertiary(Parser *p);
 
 static Expr *primary(Parser *p) {
-    if (match(p, 1, TOKEN_FALSE)) {
-        bool b = false;
-        return (Expr*)LiteralInit(createObject(OBJECT_BOOL, &b));
-    } else if (match(p, 1, TOKEN_TRUE)) {
-        bool b = true;
-        return (Expr*)LiteralInit(createObject(OBJECT_BOOL, &b));
-    } else if (match(p, 1, TOKEN_NIL)) {
-        return (Expr*)LiteralInit(createObject(OBJECT_NIL, NULL));
-    } else if (match(p, 1, TOKEN_STRING)) {
-        char *str = strdup(previous(p).literal.str);
-        return (Expr*)LiteralInit(createObject(OBJECT_STR, &str));
+    if (match(p, 1, TOKEN_TRUE)) {
+        return (Expr*)LiteralInit(ObjectBool(true));
+    } else if (match(p, 1, TOKEN_FALSE)) {
+        return (Expr*)LiteralInit(ObjectBool(false));
     } else if (match(p, 1, TOKEN_NUMBER)) {
-        double f = previous(p).literal.f;
-        return (Expr*)LiteralInit(createObject(OBJECT_NUM, &f));
+        char *str_num = malloc(previous(p)->lexeme_len + 1);
+        double num = 0.0;
+
+        str_num[previous(p)->lexeme_len] = '\0';
+
+        strncpy(str_num, previous(p)->lexeme, previous(p)->lexeme_len);
+        num = atof(str_num);
+        free(str_num);
+        
+        return (Expr*)LiteralInit(ObjectNum(num));
+    } else if (match(p, 1, TOKEN_STRING)) {
+        return (Expr*)LiteralInit(ObjectStr(&previous(p)->lexeme[1], previous(p)->lexeme_len - 2));
+    } else if (match(p, 1, TOKEN_NIL)) {
+        return (Expr*)LiteralInit(ObjectNil());
     } else if (match(p, 1, TOKEN_LEFT_PAREN)) {
         Expr *expr = tertiary(p);
         if (expr == NULL)
             return NULL;
 
-        Token rightParen;
-        if (consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after expression.\n", &rightParen) != 0) {
-            expr->fini(expr);
+        if (consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after expression.\n") == NULL) {
+            ExprFini(expr);
             return NULL;
         }
 
@@ -149,17 +134,30 @@ static Expr *primary(Parser *p) {
 
 static Expr *unary(Parser *p) {
     if (match(p, 2, TOKEN_BANG, TOKEN_MINUS, TOKEN_PLUS)) {
-        if (previous(p).type == TOKEN_PLUS) {
+        if (previous(p)->type == TOKEN_PLUS) {
             parser_error(previous(p), "Invalid unary plus");
             return NULL;
         }
 
-        Token operator = previous(p);
-        Expr *right = unary(p);
+        Operation oper;
+        Expr *right;
+
+        switch (previous(p)->type) {
+        case TOKEN_BANG:
+            oper = OPER_BOOL_NOT;
+            break;
+        case TOKEN_MINUS:
+            oper = OPER_NEGATE;
+            break;
+        default:
+            break;
+        }
+        
+        right = unary(p);
         if (right == NULL)
             return NULL;
 
-        return (Expr*)UnaryInit(operator, right);
+        return (Expr*)UnaryInit(oper, right);
     }
 
     return primary(p);
@@ -171,14 +169,27 @@ static Expr *factor(Parser *p) {
         return NULL;
 
     while (match(p, 2, TOKEN_SLASH, TOKEN_STAR)) {
-        Token operator = previous(p);
-        Expr *right = unary(p);
+        Operation oper;
+        Expr *right;
+
+        switch (previous(p)->type) {
+        case TOKEN_SLASH:
+            oper = OPER_DIV;
+            break;
+        case TOKEN_STAR:
+            oper = OPER_MUL;
+            break;
+        default:
+            break;
+        }
+        
+        right = unary(p);
         if (right == NULL) {
-            expr->fini(expr);
+            ExprFini(expr);
             return NULL;
         }
 
-        expr = (Expr*)BinaryInit(expr, operator, right);
+        expr = (Expr*)BinaryInit(expr, oper, right);
     }
 
     return expr;
@@ -190,14 +201,27 @@ static Expr *term(Parser *p) {
         return NULL;
 
     while (match(p, 2, TOKEN_PLUS, TOKEN_MINUS)) {
-        Token operator = previous(p);
-        Expr *right = factor(p);
+        Operation oper;
+        Expr *right;
+
+        switch (previous(p)->type) {
+        case TOKEN_PLUS:
+            oper = OPER_ADD;
+            break;
+        case TOKEN_MINUS:
+            oper = OPER_SUB;
+            break;
+        default:
+            break;
+        }
+        
+        right = factor(p);
         if (right == NULL) {
-            expr->fini(expr);
+            ExprFini(expr);
             return NULL;
         }
-
-        expr = (Expr*)BinaryInit(expr, operator, right);
+        
+        expr = (Expr*)BinaryInit(expr, oper, right);
     }
 
     return expr;
@@ -210,14 +234,33 @@ static Expr *comparison(Parser *p) {
 
     while (match(p, 4, TOKEN_LESS, TOKEN_LESS_EQUAL,
                  TOKEN_GREATER, TOKEN_GREATER_EQUAL)) {
-        Token operator = previous(p);
-        Expr *right = term(p);
-        if (right == NULL) {
-            expr->fini(expr);
+        Operation oper;
+        Expr *right;
+        
+        switch (previous(p)->type) {
+        case TOKEN_LESS:
+            oper = OPER_LESS;
+            break;
+        case TOKEN_LESS_EQUAL:
+            oper = OPER_LESS_EQUAL;
+            break;
+        case TOKEN_GREATER:
+            oper = OPER_GREATER;
+            break;
+        case TOKEN_GREATER_EQUAL:
+            oper = OPER_GREATER_EQUAL;
+            break;
+        default:
+            break;
+        }
+
+        right = term(p);
+        if (hadError) {
+            ExprFini(expr);
             return NULL;
         }
 
-        expr = (Expr*)BinaryInit(expr, operator, right);
+        expr = (Expr*)BinaryInit(expr, oper, right);
     }
 
     return expr;
@@ -229,78 +272,99 @@ static Expr *equality(Parser *p) {
         return NULL;
 
     while (match(p, 2, TOKEN_BANG_EQUAL, TOKEN_EQUAL_EQUAL)) {
-        Token operator = previous(p);
-        Expr *right = comparison(p);
+        Operation oper;
+        Expr *right;
+        
+        switch (previous(p)->type) {
+        case TOKEN_BANG_EQUAL:
+            oper = OPER_NOT_EQUAL;
+            break;
+        case TOKEN_EQUAL_EQUAL:
+            oper = OPER_EQUAL;
+            break;
+        default:
+            break;
+        }
+
+        right = comparison(p);
         if (right == NULL) {
-            expr->fini(expr);
+            ExprFini(expr);
             return NULL;
         }
 
-        expr = (Expr*)BinaryInit(expr, operator, right);
+        expr = (Expr*)BinaryInit(expr, oper, right);
     }
 
-    return expr;
-}
-
-static Expr *expression(Parser *p) {
-    if (match(p, 8, TOKEN_SLASH, TOKEN_STAR, TOKEN_COMMA,
-              TOKEN_LESS, TOKEN_LESS_EQUAL,
-              TOKEN_GREATER, TOKEN_GREATER_EQUAL,
-              TOKEN_EQUAL_EQUAL)) {
-        parser_error(previous(p), "Missing left expression.\n");
-    }
-
-    Expr *expr = equality(p);
-    if (expr == NULL)
-        return NULL;
-
-    while (match(p, 1, TOKEN_COMMA)) {
-        Token comma = previous(p);
-        Expr *right = equality(p);
-        if (right == NULL) {
-            expr->fini(expr);
-            return NULL;
-        }
-
-        expr = (Expr*)BinaryInit(expr, comma, right);
-    }
-    
     return expr;
 }
 
 static Expr *tertiary(Parser *p) {
-    Expr *condition = expression(p);
+    Expr *condition = equality(p);
     if (condition == NULL)
         return NULL;
 
     if (!match(p, 1, TOKEN_QUESTION))
         return condition;
 
-    Expr *ifTrue = expression(p);
+    Expr *ifTrue = equality(p);
     if (ifTrue == NULL) {
-        condition->fini(condition);
+        ExprFini(condition);
         return NULL;
     }
 
     if (match(p, 1, TOKEN_COLON)) {
-        Expr *ifFalse = expression(p);
+        Expr *ifFalse = equality(p);
         if (ifFalse != NULL)
             return (Expr*)TertiaryInit(condition, ifTrue, ifFalse);
 
-        condition->fini(condition);
-        ifTrue->fini(ifTrue);
+        ExprFini(condition);
+        ExprFini(ifTrue);
         return NULL;
     }
 
     parser_error(peek(p), "Missing colon for the tertiary operator.\n");
-    ifTrue->fini(ifTrue);
-    condition->fini(condition);
+    ExprFini(condition);
+    ExprFini(ifTrue);
     return NULL;
 }
 
+static Expr *expression(Parser *p) {
+    bool isWrong = false;
+
+    if (match(p, 8, TOKEN_SLASH, TOKEN_STAR, TOKEN_COMMA,
+              TOKEN_LESS, TOKEN_LESS_EQUAL,
+              TOKEN_GREATER, TOKEN_GREATER_EQUAL,
+              TOKEN_EQUAL_EQUAL)) {
+        parser_error(previous(p), "Missing left expression.\n");
+        isWrong = true;
+    }
+
+    Expr *expr = tertiary(p);
+    if (expr == NULL)
+        return NULL;
+
+    while (match(p, 1, TOKEN_COMMA)) {
+        Expr *right = tertiary(p);
+        if (expr == NULL) {
+            ExprFini(expr);
+            return NULL;
+        }
+
+        expr = (Expr*)BinaryInit(expr, OPER_COMMA, right);
+    }
+
+    if (isWrong) {
+        ExprFini(expr);
+        return NULL;
+    }
+
+    return expr;
+}
+
+
 /* ---- MAIN METHODS ---- */
 
-Parser ParserInit(const TokenArray *tokens) {
+Parser ParserInit(const Token *tokens) {
     return (Parser){ .tokens = tokens, .current = 0 };
 }
 

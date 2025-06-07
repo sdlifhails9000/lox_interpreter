@@ -1,3 +1,0 @@
-/home/awaleed/coding/lox/build/CMakeFiles/lox.dir
-/home/awaleed/coding/lox/build/CMakeFiles/edit_cache.dir
-/home/awaleed/coding/lox/build/CMakeFiles/rebuild_cache.dir
